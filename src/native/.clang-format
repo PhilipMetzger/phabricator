@@ -1,0 +1,25 @@
+# Since we indent by 4, indent public: by 2
+AccessModifierOffset: 2
+AlignEscapedNewLines: Left
+# Disallow `if (!foo) return;
+AllowShortIfStatementsOnASingleLine: never
+# Use a Google Style
+basedOnStyle: Google
+BreakBeforeConceptDeclarations: true
+# C++ uses `int*, auto*`, C uses `int *`
+PointerAlignment: Left
+# Same as above
+ReferenceAlignment: Left
+# Max is 120, 80 is preferred
+ColumnLimit:  120
+# Use 4 instead of Googles 2
+IndentWith: 4
+# Indent Requires to follow Rust
+IndentRequiresClause: true
+IndentGotoLabels: false
+# Use 2 to differentiate from Code
+PPIndentWith: 2
+RequiresClausePosition: OwnLine
+SpaceAfterCStyleCast: true
+UseCRLF: false
+MaxEmptyLinesToKeep: 1
