@@ -24,5 +24,5 @@ The Frontend will be untouched.
 
 ## Additional Info
 
-This work is inspired by [Gerrit](www.gerrit.com) and [LUCI](www.github.com/luci/luci-go).
+This work is inspired by [Gerrit](www.gerritcodereview.com) and [LUCI](www.github.com/luci/luci-go).
 Which are both used for [Chromium](www.chromium.org) Infrastructure.

@@ -1,5 +1,5 @@
 # Since we indent by 4, indent public: by 2
-AccessModifierOffset: 2
+#AccessModifierOffset: 2
 AlignEscapedNewLines: Left
 # Disallow `if (!foo) return;
 AllowShortIfStatementsOnASingleLine: never
@@ -13,7 +13,7 @@ ReferenceAlignment: Left
 # Max is 120, 80 is preferred
 ColumnLimit:  120
 # Use 4 instead of Googles 2
-IndentWith: 4
+#IndentWith: 4
 # Indent Requires to follow Rust
 IndentRequiresClause: true
 IndentGotoLabels: false
