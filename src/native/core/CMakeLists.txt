@@ -1,0 +1,23 @@
+phab_lib(
+    NAME
+    "core"
+    SOURCES
+    context.cc
+    eventloop.cc
+    metric.cc
+    threadpool.cc
+    DEPS
+    absl::strings
+    absl::containers
+)
+
+phab_test(
+    NAME
+    "core_test"
+    SOURCES
+    context_test.cc
+    metric_test.cc
+    threadpool_test.cc
+    DEPS
+    core
+)

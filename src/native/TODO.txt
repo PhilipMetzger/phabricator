@@ -1,0 +1,22 @@
+This list is ordered by prio:
+Read up on the Json-RPC Schema of Phabricator 
+(Done for: Harbormaster, TODO: Differential,Diffusion)
+Transform it to a matching gRPC schema
+(Done for: HarborMaster, TODO: Differential,Diffusion)
+Add v1, ongoing.
+Vendor protoc and grpc and phpcpp.
+Find out how to fix the communication of per-Process (PHP) vs per-Thread or State (C++)
+Implement phabricator startup and base in c++.
+This removes the proxy requirement for running, e.g ngnix, envoy or caddy. 
+./phabricator --> ./phabbin => http-server 
+                   php-source <--> c++ impl 
+
+Arc-go, go makes it quite easy to write a gRPC clients, which are small.
+
+Diffusion improvements:
+Support git push https://your.instance/refs/HEAD as a way to create Diffs.
+Make the workflow, perforce like, p4 add, p4 submit, p4 integrate
+Add cpp implementation of the git protocol. 
+Add cpp impl of the hg protocol. 
+add cpp impl of the mononoke protocol, (AFAIU, its a thrifty variation of hg) 
+4Fun Perforce Support, see the perforce API

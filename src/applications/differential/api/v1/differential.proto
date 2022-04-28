@@ -1,0 +1,50 @@
+// Author: Philip Metzger
+// SPDX-License-Identifier: Apache-2.0
+syntax = "proto3"
+
+import "google/api/annotation.proto"
+import "src/applications/differential/api/v1/revision.proto"
+
+
+package differential.v1;
+
+
+// Implements the Differential API.
+// The service is reachable under https://your-instance/differential/v1/*
+service Differential {
+ 
+ // TODO: Finish API
+ // TODO: aip compliant revisions, so differential/v1/D{NNN}:rollback and co 
+ // work.
+ rpc CreateChangeSet(CreateChangeSetRequest) returns (CreateChangeSetResponse)
+    {}
+ rpc GetRevision(GetRevisionRequest) returns (Revision) {}
+ rpc CreateRevision(CreateRevisionRequest) returns (CreateRevisionResponse) {}
+
+
+
+}
+
+// Next ID: 4
+message CreateChangeSetRequest {
+  // The Diffusion Repository, followed by an optional branch.
+  // `yourinstance.com/reponame:branch`
+  string name = 1;
+  // The owner of the Request, MUST exist as Phabricator User.
+  string owner = 2;
+  // The List of Revisions to send. They MUST be ordered.
+  // Must so that children follow their parents.
+  repeated Revision revisions = 3;
+
+}
+
+// Next ID: 4
+message CreateRevisionRequest {
+  // The Diffusion Repository, followed by an optional branch.
+  // `yourinstance.com/reponame:branch`
+  string name = 1;
+  // The owner of the request, must be a registered phabricator user.
+  string owner = 2;
+  // The Revision, which was created by `arc diff`.
+  Revision revision = 3;
+}

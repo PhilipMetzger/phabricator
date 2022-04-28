@@ -1,0 +1,34 @@
+// Author: Philip Metzger
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3"
+
+
+import "google/api/annotation.proto"
+import "src/diffusion/repository.proto"
+
+
+package diffusion.v1;
+
+
+// This implements the diffusion service, reachable under
+// https://your-instance/diffusion/v1/*
+//
+service Diffusion {}
+
+// Next ID: N
+message GetRepositoryRequest {}
+// Next ID: N
+message GetRepositoryResponse {}
+// Next ID: N
+message CreateRepositoryRequest {}
+// Next ID: N
+message CreateRepositoryResponse {}
+// Next ID: N
+message ListRepositoryRequest {}
+// Next ID: N
+message ListRepositoryResponse {}
+// Next ID: N
+message DeleteRepositoryRequest {}
+// Next ID: N
+message DeleteRepositoryResponse {}

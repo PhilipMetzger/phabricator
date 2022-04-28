@@ -1,0 +1,142 @@
+// Author: Philip Metzger
+// SPDX-License-Identifier: Apache-2.0
+
+import "google/api/annotation.proto"
+import "harbormaster/v1/backend.proto"
+import "harbormaster/v1/build.proto"
+
+package harbormaster.v1;
+
+
+// The Harbormaster is responsible for calling the external build tool.
+// Which can be on a different machine in a different timezone.
+// This is service is a bit more powerful than the harbormaster which ships 
+// with Phabricator. Currently not cluster aware.
+// 
+// The native service is available on 
+// https://your-instance.com/harbormaster/v1/*.
+// while the PHP implementation is available in the path without /v1.
+// 
+// Harbormaster implements the Scheduler/Orchestrator Service in Literature.
+// E.g Google's Forgemaster is the Scheduler for all Forge services.
+service Harbormaster {
+  // TODO: Define correct mapping from the PHP Base
+  // TODO: aip standard responses.
+
+  // Get a existing Backend. 
+  rpc GetBackend(GetBackendRequest) returns (Backend) {
+    option (google.api.http) = {
+      get: "v1/backends/{name=backend}/"     
+    };
+  }
+  // Create a new Backend, which must in the known set.
+  // 
+  rpc CreateBackend(CreateBackendRequest) returns (CreateBackendResponse) {
+    option (google.api.http) = {
+      post: "v1/backends"
+      body: "Backend"
+    };
+
+  }
+  rpc ListBackends(ListBackendRequest) returns (ListBackendResponse) {
+    option (google.api.http) = {
+      get: "v1/backends"
+    };
+  }
+  rpc ChangeBackend(ChangeBackendRequest) returns (ChangeBackendResponse) {}
+  rpc DeleteBackend(DeleteBackendRequest) returns (DeleteBackendResponse) {}
+
+  // Build creation and queries.
+  rpc GetBuild(GetBuildRequest) returns (Build) {}
+  // CreateBuild is only invoked from the Differential server.
+  rpc CreateBuild(CreateBuildRequest) returns (CreateBuildResponse) {}
+  rpc ListBuilds(ListBuildRequest) returns (ListBuildResponse) {}
+  rpc DeleteBuild(DeleteBuildRequest) returns (DeleteBuildResponse) {}
+  // rpc ChangeBuild(ChangeBuildRequest) returns (ChangeBuildResponse)
+
+  // Buildplan creation.
+  // Gets a single buildplan for a viewer.
+  rpc GetBuildPlan(GetBuildPlanRequest) returns (BuildPlan) {
+    option (google.api.http) = {
+      get: "v1/buildplans/{name=buildplan}"
+
+    };
+  }
+  rpc CreateBuildPlan(CreateBuildPlanRequest) returns (CreateBuildPlanResponse) 
+    {}
+  rpc ListBuildPlans(ListBuildPlanRequest) returns (ListBuildPlanResponse) {
+    option (google.api.http) = {
+      get: "v1/buildplans"
+    }
+
+  }
+  rpc DeleteBuildPlan(DeleteBuildPlanRequest) returns (DeleteBuildPlanResponse) 
+    {}
+  rpc ChangeBuildPlan(ChangeBuildPlanRequest) returns 
+    (ChangeBuildPlanResponse) {
+      option (google.api.http) = {
+        patch: "v1/buildplans/{name=buildplan}"
+        body: "BuildPlan"
+      };
+    }
+  
+
+}
+
+// Describes a Harbormaster backend.
+// Next ID: 3
+message Backend {
+  // Name of the Backend in the UI. 
+  string name = 1;
+  // Describes the State of the Backend.
+  enum State {
+    // State for AIP Compliance. A hard error.
+    STATE_UNKNOWN = 0;
+    // This Backend is implemented and running.
+    RUNNING = 1;
+    // This Backend is deactivated and may return to the Pool.
+    DEACTIVATED = 2;
+    // This Backend is shutdown and no longer used for any service.
+    SHUTDOWN = 3;
+  }
+  // The current state of the Backend. 
+  State state = 2;
+  oneof value {
+    // A Buildbot backend, see its definition for more information.
+    BuildBot bot = 1;
+    // A Buildkite backend, requires a staging repository like in the PHP implementation.
+    // For more information, see its definiton.
+    BuildKite kite = 2;
+    // A Goma backend. For more information see its definiton.
+    // Goma is a implementation of Bazel's Remote Execution.
+    Goma goma = 3;
+  }
+}
+
+// Next ID: 2
+message GetBuildPlanRequest {
+  // The Buildplans name.
+  string name = 1;
+}
+
+// Next ID: 3
+message ChangeBuildPlanRequest {
+  // Name of the Buildplan, MUST exist.
+  string name = 1;
+  // Allowed options:
+  // `buildplan.name`
+  // `buildplan.step`
+  // `buildplan.`
+  google.protobuf.Fieldmask mask = 2;
+}
+
+// Next ID: 4
+message ListBuildResponse {
+  // The list of builds running.
+  repeated Build builds = 1;
+  // The amount of builds in the response, by default 25.
+  int32 page_size = 2;
+  // Current page token encoded as base64.
+  // The implementation receives this from PHP.
+  string page_token = 3;
+}

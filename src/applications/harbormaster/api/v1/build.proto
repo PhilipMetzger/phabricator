@@ -1,0 +1,138 @@
+// Author: Philip Metzger
+// SPDX-License-Identifier: APACHE-2.0
+syntax = "proto3"
+
+import "google/protobuf/timestamp.proto"
+import "src/infrastructure/phid/phabid.proto"
+import "src/applications/differential/api/v1/revision.proto"
+
+
+// This proto may be in a v1 path, but this currently does not mean any 
+// stability guarantees.
+package harbormaster.v1;
+
+// Represents a external Build Status.
+// This is visible via Http Request and in the UI.
+// It represents the state diagram of both Buildplans and Builds.
+//
+// Next ID: 5
+enum Status {
+  // Unspecified Build for long-running Runners.
+  STATUS_UNSPECIFIED = 0;
+  // A Build is started.
+  STARTING = 1;
+  // A Build is in progress. May be interrupted.
+  RUNNING = 2;
+  // The Build is ending. 
+  ENDING = 3;
+  // The Build got cancelled. 
+  CANCELLED = 4;
+
+}
+
+// This describes a running build. Intended to be backend agnostic.
+//
+// Next ID: 7 
+message Build { 
+ // User who requested the build. Must be registered to valid phabricator
+ // instance.
+ string owner = 1;
+ // User who cancelled the build. Must be registered to a valid phabricator
+ // instance and have the matching rights through ACL.
+ string cancelled_by = 2;
+ // OAuth token, if any is required.
+ optional bytes oauth_token = 2;
+ // On which differential revision, e.g D123. Must be valid for current Diffusion Repo.
+ // Only valid if it matches this "^D[0-9]{1,128}$"
+ differential.v1.Revision revision = 3; 
+ // The Status for the current Build. 
+ Status status = 4;
+ // Build started at, e.g `19.30:30UTC+1` 
+ google.protobuf.Timestamp start_time = 5;
+ // Build ended at, e.g `19.45:52UTC+1`
+ google.protobuf.Timestamp end_time = 6;
+
+}
+
+// A BuildStep represents a step in a Buildplan. These get executed on remote
+// builders. This matches the concept of Phabricator implementation.
+// 
+// Next ID: 4
+message BuildStep {
+  // This is the first thing in the commandline, passed to the builder.
+  //
+  // The Builders have no support for VCS, as they must have access to 
+  // source code.
+  //
+  // Next ID: 16
+  enum Invocation {
+    // Empty commandline, usually a error.
+    INVOCATION_UNKNOWN = 0;
+    // gcc -c object.c -o out/object.o
+    GCC = 1;
+    // clang -c object.c -o out/object.o
+    CLANG = 2; 
+    // rustc -c object.rs -o out/object.rlib -C opt=3 
+    RUSTC = 3;
+    // javac java/com/phab/Build.java -o out/Build.class
+    JAVAC = 4; 
+    // protoc -I src/proto/build.proto build_service.proto --cpp_out=build_service.pb.cc
+    PROTOC = 5;
+    // cargo build --release 
+    CARGO = 6;
+    // cmake -S . -B build -G Ninja
+    CMAKE = 7;
+    // gn gen out/release 
+    GN = 9;
+    // ninja -C out/
+    // n2 -C out/
+    NINJA = 10; 
+    // bazel build //zetasql/public:type_annotation_cc_proto
+    BAZEL = 11;
+    // plz build //sql
+    PLEASE = 12;
+    // buck build //sql
+    BUCK = 13;
+    // Make belongs in this category, as it's a glorified shell.
+    // mkdir -p o/b/pr && cd !$
+    SHELL = 14;
+    // Phabricator has it built-in.
+    // Expects a Website, which the request in command will be sent.
+    HTTP_REQUEST = 15;
+
+  }
+  // The Invocation type, will be automagically appended to the command. 
+  // Unknown Invocations will be rejected.
+  // By default: shell to match Github and Gitlab. 
+  Invocation type = 1;
+  // The shell command. 
+  string command = 2;
+  // A optional description, will be auto-generated if it's not defined. 
+  string description = 3;
+
+}
+// This describes a Harbormaster Buildplan, where each step gets run 
+// sequentally. Builders receive the full plan in a single request. 
+// So they can figure out how to parallelize it.
+//
+// The PHP implementation currently does graph dependency tracking,
+// which we dont support. 
+//
+// Next ID: 6
+message BuildPlan {
+  // The PhabID, is not exposed to the user. 
+  // Instead it's used track the build in the object graph.
+  PhabID id = 1;
+  // The Buildplans name, e.g "linux-common-tsan"
+  // Limited to 128 characters for now.
+  string name = 2;
+  // The Buildplans current state.
+  Status state = 3;
+  // The Steps to take. Ordered by predecence.
+  // Start -> Step 1 -> Step 2 -> Step N -> End
+  repeated BuildStep steps = 4;
+  // This signifies how long this BuildPlan can take, before it is cancelled.
+  // E.G `absl::Hour(1)`
+  google.protobuf.Duration timeout_limit = 5;
+}
+

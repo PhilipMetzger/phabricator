@@ -1,0 +1,43 @@
+// Author: Philip Metzger
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3"
+
+
+package diffusion.v1;
+
+// This describes a Diffusion Repository.
+// It can be backed by a git repo, svn repo or mercurial/mononoke repo.
+// 
+// Next ID: N
+message Repository {
+  // The name of the repository.
+  string name = 1;
+
+  enum Type {
+    // An unknown Repository, usually an error.
+    TYPE_UNKNOWN = 0;
+    // This repository is self hosted, on the server. 
+    HOST = 1;
+    // This Repository is a view over an externally hosted repository,
+    // like llvm.
+    VIEW = 2;
+    // This Repository is replicated onto this instance.
+    REPLICATE = 3;
+  }
+  // The Repository Type.
+  Type repo_type = 4;
+
+  enum SCM {
+    // A invalid type for api compliance.
+    SCM_UNKNOWN = 0;
+    // This is a git repository.
+    GIT = 1;
+    // This is a Mercurial/Mononoke repository.
+    HG = 2;
+    // This is a Subversion repository.
+    SVN = 3;
+  }
+  SCM source_control = 5;
+
+}

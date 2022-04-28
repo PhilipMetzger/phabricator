@@ -1,3 +1,6 @@
+// Author: Philip Metzger
+// SPDX-License-Identifier: Apache-2.0
+//
 // Entrypoint for PhabNative, this justs runs a http server. 
 // gRPC Servers will be registered here.
 //
@@ -5,37 +8,53 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <thread>
 
-struct Options {
-    // Enable debug endpoints.
-    bool debug;
-    // Current host, when empty localhost:5554
-    std::optional<std::string> host;
-    // Called when the server shutdown is started.
-    // Must be threadsafe, as it can be called from any thread.
-    std::function<void(const phab::Server::Context&) on_shutdown;
-    // Number of background threads to use. Only used for debugging.
-    size_t max_concurrency;
-};
+#include "absl/time/time.h"
+
+#include "src/native/core/logging.h"
+#include "src/native/core/check.h"
+#include "src/native/server.h"
+
+static constexpr auto kOneDay = absl::Day(1);
 
 // This is just starting the gRPC Server, on which Phabricator (in PHP) runs.
 // the Server can respond to healthchecks and other stats via url rewriting.
 int main(int,char**) {
-    Options options;
+    phab::Server::Options options;
     options.debug = true;
+    options.on_shutdown = [](auto& context) {
+      LOG(INFO) << "Shutdown called on" << std::thread::current_id();
+      CHECK(context.Metrics().MetricProto());
+      phab::base::WriteTextProto("end_of_run",
+              context.Metrics().MetricProto());
+
+    };
     options.host = std::nullopt; 
 
-    // phab::Server server = phab::Server::Create(std::move(options));
-    // auto& ctx = server.Context();
-    // ctx.SetMetricRetention(kOneDay);
+    phab::Server server = phab::Server::Create(std::move(options));
+    auto& ctx = server.Context();
+    ctx.SetMetricRetention(kOneDay);
+    ctx.SetCrashHandler(absl::bind_front(Server::Crash,&server));
+
+    // TODO(T1): Move to debug endpoints to server.
+    // TODO: Move these into //net/grpc/base/.
+    // 
+    // // Stubby ships these endpoints out of the box.
+    // server.Register("/flagz", [](auto& context,auto* response) {
+    // // TODO: Enumerate enviroment and commandline for flags and print their 
+    // // state.
+    // }
+    // server.Register("/streamz", [](auto& context,auto* response) {});
+    // server.Register("/varz", [](auto& context,auto* response) {});
     // server.Register("/healthz", [](auto& context,auto* response) {
     //   auto is_http = context.request().IsHttp();
     //   auto is_text = context.request().ContentType() == "application/text"; 
     //   auto metric = histogram::Metric("phab.core.HealthCheck");
-    //   CHECK(context.Deadline() <= phab::base::Seconds(5));
+    //   CHECK_LE(context.Deadline(),absl::Second(5));
     //   if (is_http) {
     //      LOG(VERBOSE) << "received http healthcheck";
-    //      std::string content = "HTTP 1/1";
+    //      std::string content = net::DefaultHeader(); 
     //      for (const auto& server : context.RegisteredServices()) {
     //          auto rpc_metric = histogram::Metric(
     //              absl::StrFormat("phab.$1.HealthCheck",server.name());
@@ -51,7 +70,7 @@ int main(int,char**) {
     // });
     // server.Register("/statz",[](auto& context,auto* response) {
     //  auto is_http = context.request().IsHttp();
-    //  phab::common::Stats all_stats = phab::common::Stats::Create(
+    //  phab::common::Stats all_stats = common::Stats::Create(
     //      context.stats().file());
     //  if (is_http) {
     //      for (auto& req_in : all_stats.Requests())
@@ -70,5 +89,29 @@ int main(int,char**) {
     //  auto metrics_pb = metric::FromJson(context.metric().File());
     //  response->Write(metrics_pb); 
     // });
-    // return server.Run();    
+    // // Tries to imitate Stubby's /rpcz, for rpc stats.
+    // // Trillian has a matching example.
+    // server.Register("/rpcz",[](auto& context,auto* response) {
+    //  auto is_http = context().request().IsHttp();
+    //  auto& metric = context.Metrics();
+    //  std::vector<common::Metric> metrics = metric.All();
+    //  // Sort the rpcs, from most active 
+    //
+    //  if (is_http) {
+    //    std::string content = net::DefaultHeader();
+    //    if (context().request().Header().is_text()) {
+    //      absl::StrAppend(&content,"Stats for this server.");
+    //      for (const auto& server_data : metricpb.servers()) {
+    //
+    //
+    //      }
+    //    }
+    //
+    //  }
+    //  CHECK(context.request().IsRPC());
+    //  // Handle rpc GetRpcz(google.protobuf.Empty) returns (Rpcz)
+    // }
+    
+    // Start the http server on the main thread.
+    return server.Run();    
 }

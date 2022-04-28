@@ -1,0 +1,80 @@
+// Author: Philip Metzger
+// SPDX-License-Identifier: Apache-2.0
+syntax = "proto3";
+
+package harbormaster.v1;
+
+
+// Represents a BuildBot as backend, see www.buildbot.net.
+// This is a supported backend.
+// 
+// Next ID: 6 
+message BuildBot {
+  // The Buildbot's name 
+  string name = 1;
+  // Path to the buildbot configuration file, must end with cfg.
+  string config = 2;
+  // The buildbot build script, must be Python3.
+  string build_script = 3;
+  // Runs on this host.
+  enum Host {
+    HOST_NONE = 0;
+    LINUX = 1;
+    MAC = 2;
+    WINDOWS = 3;
+  }
+  // The host OS.
+  Host host = 4;
+  // The amount of workers running.
+  int32 workers = 5;
+}
+
+// Represents a www.buildkite.com backend.
+// This is a native and built-in supported backend.
+// 
+// The requests will be directly sent to
+// https://api.buildkite.com/v2/organizations/${organisation}/pipelines/${repository}/builds
+//
+// Next ID: 6
+message BuildKite {
+  // The Buildkite organisation it runs on. This will be directly sent to
+  // https://api.buildkite.com/v2/{organisation}/{repository}
+  string organisation = 1;
+  // The repository this Buildkite builds run on.
+  // Must be a Diffusion Repository with a staging branch to run on.
+  string repository = 2;
+  // The Buildkite Token used for Authorization.
+  // Fills X-Buildkite-Token.
+  bytes token = 3;
+  // Ratelimit for Harbormaster, by default taken from the PHP implementation.
+  int32 rate_limit = 4;
+
+
+}
+
+// Represents a Goma build cluster, as backend.
+// Goma implements bazel's remote execution. 
+// Goma natively understands, C++, Java and Rust.
+//
+// This is a extension.
+// Next ID: 5
+message Goma {
+  // The Goma cluster name, e.g `https://goma.googleprod.com/$cluster_name`
+  string cluster_name = 1;
+  // The Auth Token which is required for goma.
+  bytes oauth_token = 2;
+  // The amount of machines, which run in this goma cluster.
+  int32 machines = 3;
+  // Describes a Goma CAS, Storage backend.
+  enum Storage {
+    // For API Compliance, is never used in production code.
+    STORAGE_NONE = 0;
+    // This is an aws.s3 compatible backend. See https://aws.amazon.com/s3 
+    S3 = 1;
+    // This is an gs:// compatible backend. See https://cloud.google.com/storage
+    GCS = 2;
+  }
+  // The CAS, Backend in use. 
+  Storage cas_backend = 4;
+}
+
