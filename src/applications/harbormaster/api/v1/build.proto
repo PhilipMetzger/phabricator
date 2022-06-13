@@ -59,6 +59,7 @@ message Build {
 // 
 // Next ID: 4
 message BuildStep {
+  string name = 5;
   // This is the first thing in the commandline, passed to the builder.
   //
   // The Builders have no support for VCS, as they must have access to 

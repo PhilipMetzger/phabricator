@@ -8,6 +8,7 @@
 
 namespace phab::common {
 
+// TODO: Add Histogram, Counter and Gauge.
 // A Metric is a named counter, this is used to query the API usage of the 
 // different components. 
 //

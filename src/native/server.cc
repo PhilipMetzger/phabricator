@@ -11,7 +11,7 @@ namespace phab {
 namespace {
 // Are all rpc services registered.
 bool g_initialized_services = false; 
-int kInsecure = 80;
+constexpr int kInsecure = 80;
 } // namespace
 Server Server::Create(Options& opts) {
   core::Context ctx = core::Context(opts.debug,opts.domain,
@@ -22,13 +22,20 @@ Server Server::Create(Options& opts) {
   return Server(std::move(ctx),std::move(server));
 }
 
+void Server::RegisterRoot(ResponseHandler handler) {
+  CHECK_EQ(handlers_.find("/"),handlers_.end()) << "Overwriting "/" 
+      "is not supported";
+  handler_.emplace("/",std::move(handler));
+
+}
+
 void Server::Crash() const {
   void* pc = nullptr;
   std::string out;
   if (!absl::Symbolize(&pc,&out))
       return;
   LOG(FATAL) << out;
-  std::abort();
+  IMMEDIATE_CRASH(); 
 
 }
 

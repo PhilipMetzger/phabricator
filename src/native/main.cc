@@ -11,6 +11,7 @@
 #include <thread>
 
 #include "absl/time/time.h"
+#include "abs/functional/bind_front.h"
 
 #include "src/native/core/logging.h"
 #include "src/native/core/check.h"
@@ -34,8 +35,10 @@ int main(int,char**) {
 
     phab::Server server = phab::Server::Create(std::move(options));
     auto& ctx = server.Context();
+    // Set the Metric retention to one day, this is a aid for debugging opaque
+    // errors. 
     ctx.SetMetricRetention(kOneDay);
-    ctx.SetCrashHandler(absl::bind_front(Server::Crash,&server));
+    ctx.SetCrashHandler(absl::bind_front(&Server::Crash,&server));
 
     // TODO(T1): Move to debug endpoints to server.
     // TODO: Move these into //net/grpc/base/.
@@ -44,10 +47,16 @@ int main(int,char**) {
     // server.Register("/flagz", [](auto& context,auto* response) {
     // // TODO: Enumerate enviroment and commandline for flags and print their 
     // // state.
+    //   auto all_flags = absl::AllFlags();
     // }
-    // server.Register("/streamz", [](auto& context,auto* response) {});
+    // server.Register("/streamz", [](auto& context,auto* response) {
+    //   auto streamz_values = common::CreateStreamzPage(core::Varz::Get());
+    //   response->Write(streamz_values);
+    //
+    // });
     // server.Register("/varz", [](auto& context,auto* response) {});
     // server.Register("/healthz", [](auto& context,auto* response) {
+    //   // TODO(T2): Handle remote instances.
     //   auto is_http = context.request().IsHttp();
     //   auto is_text = context.request().ContentType() == "application/text"; 
     //   auto metric = histogram::Metric("phab.core.HealthCheck");
@@ -111,6 +120,39 @@ int main(int,char**) {
     //  CHECK(context.request().IsRPC());
     //  // Handle rpc GetRpcz(google.protobuf.Empty) returns (Rpcz)
     // }
+    //
+    // // This registers a Borglet like status page.
+    // server.RegisterRoot([](auto& context, auto* response) {
+    //   absl::Duration uptime = common::ComputeUptime();
+    //   std::string image_bytes = common::ReadLogo();
+    //   DCHECK(!image_bytes.empty()) << "Failed to load logo";
+    //   auto cpu_stats = common::GetOrCreateCpuStats();
+    //   auto memory_used = common::GetOrCreateMemoryUsage();
+    //   auto page = common::CreateRootPage();
+    //   page.set_uptime(uptime);
+    //   page.set_image(std::move(image_bytes));
+    //   page.set_cpu_usage(std::move(cpu_stats)):
+    //   page.set_mem_usage(std::move(memory_used));
+    //   response->Write(std::move(page).Render());
+    // });
+    // server.Register("/profilez", [](auto& context, auto* response) {
+    //   if (context.Profiler().Running()) {
+    //      response->Write("The profiler is already running, please 
+    //      end this browser session");
+    //      return;
+    //   }
+    //   CHECK(!context.Profiler().Running());
+    //   // www.your-instance.com/profilez?sym=differential::Git::PushObjects&duration=20min
+    //   // www.your-instance.com/profilez?rpc=harbormaster.CreateBuild&amount=200
+    //   auto run_options = common::ExtractProfilezQuery(
+    //       context.request().data());
+    //   auto profiled_data = context.Profiler().Run(run_options);
+    //   auto page = common::CreateProfilerPage(std::move(profiled_data));
+    //   // Exposes chrome:tracing/perfetto.dev like data
+    //   // with flamegraph support. 
+    //   response->Write(page.data());
+    //   return;
+    // });
     
     // Start the http server on the main thread.
     return server.Run();    

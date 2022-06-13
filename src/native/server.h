@@ -8,13 +8,14 @@
 #include <string>
 #include <string_view>
 
+#include "absl/containers/flat_hash_map.h"
+
 #include "src/native/core/context.h"
 #include "src/native/net/response.h"
 #include "src/native/net/server.h"
 #include "src/applications/differential/native/server.h"
 #include "src/applications/harbormaster/native/server.h"
 
-#include "absl/containers/flat_hash_map.h"
 
 namespace phab {
 
@@ -48,9 +49,22 @@ class Server {
   // Registers all known gRPC Services.
   // Can only be called once.
   void RegisterServices();
+  // RegisterRoot creates the Webserver root handler. 
+  // Example: 
+  // auto server = Server::Create();
+  // server.RegisterRoot([](auto&,auto* response) {
+  //    auto files = ReadDirectory(".");
+  //    for (auto& file : files) {
+  //       response->Write(absl::StrCat("<a> ", file.name(), "</a>");
+  //       response->Write(file.data());
+  //    }
+  //    response->Write("Hello from this Server");
+  //    return; 
+  // });
+  void RegisterRoot(ResponseHandler callback);
   // Registers a toplevel http handler, `endpoint` must outlive the server.
   void Register(std::string_view endpoint, ResponseHandler callback);
-  // Symbolizes the current stack and 
+  // Symbolizes the current stack and immediatly crashes.
   void Crash() const;
   // Run the server. 
   void Run();

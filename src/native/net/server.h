@@ -51,7 +51,8 @@ class Server {
   Server(Server&&) = delete;
   Server operator=(Server&&) = delete;
  
-  void Respond(core::Context& context, 
+  // TODO: Move to .cc
+  void Respond(const core::Context& context, 
           absl::FunctionRef<void(core::Context&, http::Response*)> func) {
     http::Response response;
     func(context,&response);
@@ -66,14 +67,21 @@ class Server {
   // Write the `response` within `deadline`.
   void Write(const http::Response& response, absl::Duration deadline);
   // Shutdown the server. Must run on the main thread.
+  // Shutdown sequence:
+  // 1. EventLoop is destroyed.
+  // 2. Socket is closed and destroyed.
+  // 3. All remaining Tasks are run on `pool_`.
+  // 4. All peers are disconnected.
+  // 5. Destructor is invokable.
   void Shutdown(); 
   // Run all remaining tasks in the `pool_`.
+  // Will be parallelized if possible, but has no guarantees.
   void RunRemainingTasks();
 
-  // All connected clients.
+  // All connected clients. It's a IP => Socket mapping.
   absl::flat_hash_map<std::string_view,Socket> peers_;
   // Threadpool of background threads.
-  Threadpool pool_;
+  ThreadPool pool_;
   // The servers socket.
   Socket socket_;
   // Eventloop, lives as long as the server.

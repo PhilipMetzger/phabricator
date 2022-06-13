@@ -3,6 +3,8 @@
 
 syntax = "proto3"
 
+import "google/protobuf/timestamp.proto"
+
 package differential.v1;
 
 // This message describes a Differential Revision.
@@ -84,9 +86,36 @@ message GitCommit {
 }
 
 // A Mercurial or Mononoke Revision.
+// Most of the description was taken from the Mercurial Wiki.
+// See the deprectated wiki for more info. 
 //
 // Next ID: N
-message HgRevision {}
+message HgRevision {
+  // The associated Mercurial Revision.
+  int32 id = 1;
+  // The associated Mercurial Node-ID.
+  // Like the git, a 40 byte sha256 from all affected files.
+  bytes node_id = 2;
+  // Describes a the Author field.
+  message Author {
+    // Name of the Author.
+    string name = 1;
+    // Email of the Author.
+    string email = 2;
+  }
+  // Author of this Revision.
+  Author author = 2;
+  // When was this Revision created, extracted from hg commit.
+  google.protobuf.Timestamp creation_time = 3;
+  // A IANA Timezone extracted from hg.
+  string timezone = 4;
+  // The Branch this Revision targets.
+  optional string branch = 5;
+  // The Revision title, extracted from the first 500 lines of the commit.
+  string title = 6; 
+  // The commit description.
+  string body = 7;
+}
 
 // This roughly describes a Subversion Revision.
 //

@@ -4,13 +4,14 @@
 
 #include <string>
 #include <thread>
+#include <optional>
 #include <vector>
 
 namespace phab {
 
 class ThreadPool::WorkerThread {
  public: 
-   WorkerThread() : thread_base([this]() { this->Main(); }) {} 
+  WorkerThread() : thread_base([this]() { this->Main(); }) {} 
   ~WorkerThread() = default;
   // `Main` is run in the underlying std::thread.
   // This does actual work.
@@ -21,12 +22,21 @@ class ThreadPool::WorkerThread {
   // Is this worker thread joined, or can we re-use it.
   bool joined() const { return is_joined_; }
 
+  // Is the worker detached and can it no longer be collected.
+  bool detached() const { return detached_; }
+
   // What is our tid, used in `ThreadPool` for indexing.
   std::current_thread::id id() const;
+
+  // Detaches the current Worker and runs it until `task_before_destruction`
+  // returns true.
+  void Detach(std::function<bool()> task_before_destruction);
  private:
   // Is the thread still running.
   bool is_joined_ = false;
-  // Duration of the last sleep, used for finer schedules.
+  // Is the Worker running, as standalone. 
+  bool detached_ = false;
+  // Duration of the last sleep, used for finer grained scheduling.
   absl::Duration sleep_;
   // The underlying thread.
   std::thread thread_base_;
@@ -42,6 +52,7 @@ void ThreadPool::WorkerThread::Main() {
       // Nothing to do.
       return;
   }
+  // TODO: Better API, for getting a Task.
   auto& task = Context::Get().Executor().next_task();
   if (task.empty()) {
       auto metric = common::Metric("phab.core.ThreadPool.Worker.sleep");
@@ -53,6 +64,17 @@ void ThreadPool::WorkerThread::Main() {
 
 std::current_thread::id ThreadPool::WorkerThread::id() const {
   return thread_base_.id();
+}
+
+void ThreadPool::WorkerThread::Detach(
+        std::function<bool()> task_before_destruction) {
+  CHECK(task_before_destruction) << "A callback must be passed to Detach";
+  // Detach in `Main()`
+  detached_ = true;
+  // Move the task to tls.
+  CHECK(!g_end_task);
+  g_end_task = std::move(task_before_destruction);
+  
 }
 
 class ThreadPool::Watchdog {
@@ -67,11 +89,48 @@ class ThreadPool::Watchdog {
 
  private:  
   Watchdog(ThreadPool* pool) : pool_(pool) {}
+  ~Watchdog() = default;
+
+
+  // Collect idle and hanging threads. 
+  // Returns the collected thread amount on success.
+  // `std::nullopt` on failure.
+  std::optional<int32_t> Collect();
+  // Calculate the next Wakeup. 
+  absl::Duration CalculateWakeUp() const;
 
   const ThreadPool* pool_; // Unowned, must outlive the Watchdog. 
   // The Time of the last wakeup. 
   std::optional<absl::Time> last_wakeup_;
 };
+
+void ThreadPool::Watchdog::Schedule() {
+  // If this is the first schedule call from the ThreadPool, just sleep for 
+  // `kBaseSchedule`.
+  static bool first_run = last_wakeup_ == std::nullopt;  
+  if (first_run) {
+      ScheduleSleep();
+      last_wakeup_ = absl::Now();
+      absl::SleepFor(kBaseSchedule);
+      return;
+  }
+  // TODO: heuristic scheduling for ThreadPool.threads_.size()
+  auto base_duration = kBaseSchedule * pool_->threads_.size(); 
+  auto additional_time = CalculateWakeUp();
+  CHECK(base_duration + additional_time < absl::Minute(3));
+}
+
+void ThreadPool::Watchdog::Force() {
+
+  // This can only run once. Before we shutdown the ThreadPool.
+  CHECK(!g_force_called);
+  g_force_called = true;
+  // Collect the idle or hanging threads.
+  auto num = Collect();
+  CHECK(num.has_value());
+
+
+}
 
 ThreadPool ThreadPool(size_t concurrency) {
   for (size_t i = 0; i < concurrency; i++) {
@@ -83,11 +142,13 @@ ThreadPool ThreadPool(size_t concurrency) {
 ThreadPool::~ThreadPool() = default;
 
 void ThreadPool::PostJob(std::function<void()> job) {
-  // TODO: locking
-  if (is_shutting_down()) {
-      // If the ThreadPool is shutting down.
+
+  if (shutting_down()) {
+      // If the ThreadPool is shutting down. Do `job` on a specific thread.
       ShutdownJob(std::move(job));
+      return;
   }
+  // TODO: locking
   jobs_.emplace(std::move(job));
   NotifyWorkers();
   watcher_.Schedule();
@@ -102,5 +163,11 @@ void ThreadPool::PostSequencedJob(std::function<void()> job,
 void ThreadPool::PostShutdownJob(std::function<void()> job) {
    // TODO: Determine the last job.  
 }
-}
 
+WorkerThread* ThreadPool::WorkerForId(std::thread::id id) {
+  CHECK(!workers_.empty());
+
+  return nullptr;
+
+}
+} // phab

@@ -7,6 +7,16 @@
 
 
 # Create a binary
+# Example:
+#   phab_bin(
+#       NAME
+#       query_pressure
+#       SOURCES
+#       sql_query_support.cc
+#       main.cc
+#       DEPS
+#       absl::symbolize
+#   )
 # 
 # Arguments:
 #   name: the name of the target
@@ -21,6 +31,10 @@ function(phab_bin)
     add_executable(${bin_args_NAME} ${bin_args_SOURCES})
     if(bin_args_PHAB_DEPS)
         # Phabricator are all internal, so no CMake namespacing required.
+        # PhabCore => native::core, 
+        # PhabHarbormaster => harbormaster::native
+        # PhabDifferential => differential::native
+        # PhabDiffusion => diffusion::native
     endif()
     if(bin_args_DEPS)
         foreach(ext_dep IN LIST bin_args_DEPS)
@@ -29,7 +43,18 @@ function(phab_bin)
     endif()
 endfunction()
 
-# Create a library
+# Create a library.
+# Example:
+#   phab_lib(
+#       NAME
+#       "grpc_support"
+#       SOURCES
+#       grpc_to_absl.cc
+#       DEPS
+#       metrics # metrics is another phab_lib() in the same CMakelists.
+#       absl::status
+#       grpc::cpp
+#   )
 # 
 # Arguments: 
 #   name: name of the target
@@ -46,12 +71,28 @@ function(phab_lib)
     else()
         add_library(${lib_args_NAME} SHARED)
     endif()
+    if(lib_args_MISSING_ARGUMENTS)
+        message(FATAL_ERROR "There are missing arguments, ${lib_args_MISSING_ARGUMENTS}")
+    endif()
     # Alias native/differential => native::differential
     add_library("${NS_DIRECTORY}::${lib_args_NAME}" ALIAS ${lib_args_NAME})
 endfunction()
 
-# Create a test
-# 
+# Create a test.
+# Example:
+#   phab_test(
+#       NAME
+#       "file_test"
+#       SOURCES
+#       file_test.cc
+#       file_util_test.cc
+#       abspath_test.cc
+#       DEPS
+#       file # file is a phab_lib() in the same CMakelists.
+#       absl::status
+#       testing::util
+#   )
+#
 # Arguments:
 #   name: name of the test.
 #   test_libs: additional test libraries to link.
@@ -85,10 +126,14 @@ function(phab_proto)
     if (NOT ${proto_NAME} OR NOT ${proto_SOURCES})
         message(FATAL_ERROR "Name and Sources must be set for phab_proto")
     endif()
+    foreach(${proto} IN LIST ${proto_SOURCES})
+        get_filename(${proto} ${proto_name})
+        list(APPEND ${outputs} ${proto_out})
+    endforeach()
     add_library(${proto_NAME} OBJECT "${outputs}")    
     # Note: Protos are always passed as relative source. 
     # This means they always get generated in build/service/api/v1/name.pb.{h,cc}
-    target_include_directories(${proto_NAME} INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/${VERION_DIR}/${outputs}")
+    target_include_directories(${proto_NAME} INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/${version_dir}/${outputs}")
     add_library("${NS_DIRECTORY}::${proto_NAME}" ALIAS ${proto_NAME})
 endfunction()
 
@@ -124,8 +169,9 @@ endfunction()
 #   deps: linked libraries
 function(phab_grpc_lib)
     cmake_parse_arguments(grpc_lib "" "NAME;SERVICE" "SOURCES;DEPS" ${ARGN})
-    target_link_library(grpc_lib_NAME PRIVATE Grpc::Grpccpp Protobuf::LibProtobuf)
-    if(grpc_lib_DEPS)
+    add_library(${grpc_lib_NAME})
+    target_link_library(${grpc_lib_NAME} PRIVATE Grpc::Grpccpp Protobuf::LibProtobuf)
+    if(DEFINED grpc_lib_DEPS)
         foreach(dep IN LIST grpc_lib_DEPS)
             target_link_library(${grpc_lib_NAME} PRIVATE ${dep})
         endforeach()

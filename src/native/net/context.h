@@ -9,7 +9,7 @@
 
 namespace phab::http {
 
-// A Context for managing mostly Http Requests and Responses.
+// A Context for managing mostly `http::Request` and `http::Response`.
 // Should be used for passing Requests to the Server.
 class Context {
  public: 

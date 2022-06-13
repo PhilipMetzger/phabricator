@@ -23,7 +23,7 @@ class EventLoop {
      virtual void Work() = 0;
 
      // Was the `Work` unresponsive, or did it time out.
-     virtual bool TimedOut() = 0;
+     virtual bool TimedOut() const = 0;
 
      // Is all work done.
      virtual bool Done() = 0;
@@ -41,9 +41,15 @@ class EventLoop {
 
   // Run the Loop. 
   void Exec();
+
  private:
+  // Bind the EventLoop to the current thread. Must be called after
+  // `EventLoop::Create`.
+  void BindToCurrentThread();
   // Incoming work, which is not done.
-  absl::InlinedVector<Work,16> work_queue_;
+  absl::InlinedVector<WorkHandle,16> work_queue_;
+  // Are we in a nested EventLoop. We currently only support one level nesting.
+  bool nested_ = false; 
 
 };
 

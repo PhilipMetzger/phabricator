@@ -47,10 +47,28 @@ service Harbormaster {
   rpc DeleteBackend(DeleteBackendRequest) returns (DeleteBackendResponse) {}
 
   // Build creation and queries.
-  rpc GetBuild(GetBuildRequest) returns (Build) {}
+  rpc GetBuild(GetBuildRequest) returns (Build) {
+    option (google.api.http) = {
+      // The non-rpc version has your-instance.com/bNNNNN
+      // This is changed to harbormaster/build/bNNNNN
+      get: "v1/build/{name=id}"
+
+    }
+  }
   // CreateBuild is only invoked from the Differential server.
-  rpc CreateBuild(CreateBuildRequest) returns (CreateBuildResponse) {}
-  rpc ListBuilds(ListBuildRequest) returns (ListBuildResponse) {}
+  rpc CreateBuild(CreateBuildRequest) returns (CreateBuildResponse) {
+    option (google.api.http) = {
+      post: "v1/build/{name=id}"
+      body: "Build"
+    }
+  }
+  // Invoked by the UI.
+  rpc ListBuilds(ListBuildRequest) returns (ListBuildResponse) {
+    option (google.api.http) = {
+      get: "v1/builds"
+
+    }
+  }
   rpc DeleteBuild(DeleteBuildRequest) returns (DeleteBuildResponse) {}
   // rpc ChangeBuild(ChangeBuildRequest) returns (ChangeBuildResponse)
 
